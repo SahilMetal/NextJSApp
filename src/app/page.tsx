@@ -1,113 +1,78 @@
-import Image from "next/image";
+import axios from 'axios';
+// import { useState } from 'react';
+const DOORLOOP_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0eXBlIjoiQVBJIiwiaWQiOiI2Njg4MWE4ODM0YWEzMTUyNzEyMzFlYWYiLCJleHAiOjIwMzU1NTU3MjB9.sLgT8w-7kb20wCQ-uE8QPRSYP-JOZNsqAwnecoeRTio"
 
-export default function Home() {
+const configEmp = {
+  headers: {
+    'Content-Type': 'application/json',
+    "Authtoken": 'eyJraWQiOiJ6Yjhpb1wvSEJnaUFBOWJZb0p6U0NQcVZCTGp3ZkZVam8zM1BGK2NlZGxIdz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhOGIzMzEzNC0zYzIzLTQ0NTEtOWY0ZC0yNTE1OTJiZWNlMWYiLCJ3ZWJzaXRlIjoiZW1wb3JpYWVuZXJneS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMi5hbWF6b25hd3MuY29tXC91cy1lYXN0LTJfZ2hsT1hWTGkxIiwiY29nbml0bzp1c2VybmFtZSI6ImE4YjMzMTM0LTNjMjMtNDQ1MS05ZjRkLTI1MTU5MmJlY2UxZiIsImF1ZCI6IjRxdGU0N2pic3RvZDhhcG5maWMwYnVubXJxIiwiZXZlbnRfaWQiOiJjMmQxY2E4Mi1mZjgxLTRkYjMtYjA5Mi1mYWUwZDFmM2ZlZjciLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyMDU1NDM2NSwibmFtZSI6IlNhaGlsTWV0YWx3YWxhIiwiZXhwIjoxNzIwNTU3OTY1LCJpYXQiOjE3MjA1NTQzNjUsImVtYWlsIjoic2FoaWxtZXRhbHdhbGFAZ21haWwuY29tIn0.gPwW4WufI2UneFEL-aODvrsVMhx48eOeuuVkSCPF2vFO5RiaYB7mD2fcjH-Q6rgQhyQK4vYXZ1JOKkdu0xO58PkQSB14n6hsOI-a4uymhxPC-ovXdputlskxRmDQkABPAx0ECD46RNzMlsKxhTeYkJnIjRs_wnAixDdbN06RbWQZ9WSLk_KqF7zaBvwc_-2abG52oKpaO-a-mRDKEsH9hq30HCHGDMqa4MoSf56kqPsq9-87ydN2nkBX7di5cNZwGHrs0Fv4wqqNedUZrS14Aad9AqENRaC14THv6ZL9FWE91ezO-ylMTHGXyyDfVgb5tUtSpMJ1wQ-A7A1OqwawBQ'
+  }
+}
+
+const configDL = { headers: {"Authorization": "Bearer " + DOORLOOP_TOKEN}}
+
+export default function Page() {
+  // const [leaseId, setLeaseId] = useState('');
+  // const [propertyId, setPropertyId] = useState('');
+
+  // const getEmporia = async() => {
+  //   "use server";
+  //   const result = await axios.get("https://api.emporiaenergy.com/customers/devices", configEmp)
+  //   console.log(result.data.devices)
+  // };
+
+
+  const postCharges = async(leaseId: string, propertyId: string) => {
+    'use server';
+    // get sensor using property/unit
+    const sensorId = 348148;
+    const deviceInfo = await axios.get(`https://api.emporiaenergy.com/AppAPI?apiMethod=getChartUsage&deviceGid=${sensorId}&channel=1,2,3&start=2024-07-01T20:00:00.000Z&end=2024-07-09T19:00:00.000Z&scale=1MON&energyUnit=KilowattHours`, configEmp)
+    let charge = (deviceInfo.data['usageList'][0] * .132).toFixed(2);
+    console.log(deviceInfo.data, propertyId, charge)
+    const chargeData = {
+      "date": "2024-07-09", //new Date
+      "lease": leaseId,     //"668ca883b7ad1f5a810768ad",
+      "lines": [{
+        "amount": charge,
+        "account": "668557c73a92fd3a0881418f"
+      }]
+    }    
+    await axios.post("https://app.doorloop.com/api/lease-charges", chargeData, configDL)
+    console.info('POSTED !!!!!!')
+  }
+
+  const getLeases = async() => {
+    'use server';
+    const activeLeases = [];
+    const allLeases = await axios.get("https://app.doorloop.com/api/leases", configDL)
+     for (let x = 0; x < allLeases.data.total; x++) {
+      if (allLeases.data.data[x]['status'] === 'ACTIVE') {
+        activeLeases.push({ lease: allLeases.data.data[x]['id'], property: allLeases.data.data[x]['property']})
+        console.log(activeLeases)
+        let leaseId = activeLeases[0]['lease']
+        let propertyId = activeLeases[x]['property']
+        // let setLeaseId = activeLeases[0]['lease']
+        // let setPropertyId = activeLeases[x]['property']
+        postCharges(leaseId, propertyId)
+        // return [leaseId, propertyId]
+      }
+    }
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          I edited this already lol&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    <div>
+        <>
+          <div></div>
+          {/* <form action={getEmporia}>
+            <button type="submit">Get emp</button>
+          </form> */}
+          <form action={getLeases}>
+            <button type="submit">Charge Lease</button>
+          </form>
+          {/* <form action={postCharges}>
+            <button type="submit">Post Charges</button>
+          </form> */}
+        </>
+    </div>
   );
 }
